@@ -22,7 +22,6 @@ def test_get_existing_user(users_api, user_for_test):
     assert response_body["data"]["id"] == user_for_test["id"]
     assert response_body["data"]["job"] == user_for_test["job"]
     assert response_body["data"]["name"] == user_for_test["name"]
-    print (response_body)
 
 
 def test_get_created_user(users_api, user_for_test):
