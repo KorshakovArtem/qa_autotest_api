@@ -17,3 +17,6 @@ class BaseApiClient:
     def _url(self, path):
         return urljoin(self.base_url, path.lstrip("/"))
 
+    def delete(self, path, **kwargs):
+        return self.session.delete(self._url(path), **kwargs)
+

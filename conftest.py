@@ -1,5 +1,6 @@
 import json
 import threading
+import uuid
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import pytest
@@ -41,12 +42,30 @@ class TestApiHandler(BaseHTTPRequestHandler):
         payload = json.loads(request_body)
 
         created_user = {
-            "id": 3,
+            "id": max(user["id"] for user in self.users) + 1,
             "name": payload["name"],
             "job": payload["job"],
         }
 
+        self.users.append(created_user)
         self._send_json(201, {"data": created_user})
+
+    def do_DELETE(self):
+        if self.path.startswith("/users/"):
+            user_id = int(self.path.split("/")[-1])
+
+            user = next((item for item in self.users if item["id"] == user_id), None)
+
+            if user is None:
+                self._send_json(404, {"error": "User not found"})
+                return
+
+            self.users.remove(user)
+            self._send_json(204, {})
+            return
+
+        self._send_json(404, {"error": "Route not found"})
+
 
     def log_message(self, format, *args):
         return
@@ -82,3 +101,39 @@ def api_client(api_server_url):
 def users_api(api_client):
     return UsersApi(api_client)
 
+
+@pytest.fixture
+def create_random_user(users_api):
+    def _create_random_user():
+        response = users_api.create_user(
+            name=f"user_{uuid.uuid4().hex[:8]}",
+            job=f"job_{uuid.uuid4().hex[:8]}",
+        )
+        return response
+
+    return _create_random_user
+
+
+@pytest.fixture
+def create_user(users_api):
+    def _create_user(name, job):
+        response = users_api.create_user(name, job)
+        return response.json()["data"]
+    return _create_user
+
+@pytest.fixture
+def delete_user(users_api):
+    def _delete_user(user_id):
+        return users_api.delete_user(user_id)
+
+    return _delete_user
+
+
+@pytest.fixture
+def user_for_test(create_random_user, delete_user):
+    create_response = create_random_user()
+    user = create_response.json()["data"]
+
+    yield user
+
+    delete_user(user["id"])
