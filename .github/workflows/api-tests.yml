@@ -23,22 +23,52 @@ jobs:
       - name: Run tests
         run: pytest --alluredir=allure-results
 
-      - name: Prepare Allure history directory
+      - name: Save Allure test results
         if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results
+          path: allure-results
+          if-no-files-found: warn
+
+  publish-report:
+    needs: api-tests
+    if: always() && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get previous Allure history
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Prepare history directory
         run: mkdir -p gh-pages
 
+      - name: Download Allure test results
+        uses: actions/download-artifact@v4
+        with:
+          name: allure-results
+          path: allure-results
+
       - name: Generate Allure report
-        if: always()
         uses: simple-elf/allure-report-action@v1.15
         with:
           allure_results: allure-results
           gh_pages: gh-pages
           allure_report: allure-report
+          allure_history: allure-history
 
-      - name: Upload Allure report
-        if: always()
-        uses: actions/upload-artifact@v4
+      - name: Publish report to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          name: allure-report
-          path: allure-report
-          if-no-files-found: warn
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: allure-history
