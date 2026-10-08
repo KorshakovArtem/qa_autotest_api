@@ -21,4 +21,24 @@ jobs:
         run: python -m pip install -r requirements.txt
 
       - name: Run tests
-        run: pytest
+        run: pytest --alluredir=allure-results
+
+      - name: Prepare Allure history directory
+        if: always()
+        run: mkdir -p gh-pages
+
+      - name: Generate Allure report
+        if: always()
+        uses: simple-elf/allure-report-action@v1.15
+        with:
+          allure_results: allure-results
+          gh_pages: gh-pages
+          allure_report: allure-report
+
+      - name: Upload Allure report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: allure-report
+          if-no-files-found: warn
