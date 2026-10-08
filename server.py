@@ -27,20 +27,37 @@ class TestApiHandler(BaseHTTPRequestHandler):
         self._send_json(404, {"error": "Route not found"})
 
     def do_POST(self):
+        request_body = self.rfile.read(int(self.headers["Content-Length"]))
+        payload = json.loads(request_body)
+
+        if self.path.startswith("/users/"):
+            user_id = int(self.path.split("/")[-1])
+            user = next((item for item in self.users if item["id"] == user_id), None)
+
+            if user is None:
+                self._send_json(404, {"error": "User not found"})
+                return
+
+            if not payload or any(field_name not in ("name", "job") for field_name in payload):
+                self._send_json(400, {"error": "Only name and job can be updated"})
+                return
+
+            user.update(payload)
+            self._send_json(200, {"data": user})
+            return
+
         if self.path != "/users":
             self._send_json(404, {"error": "Route not found"})
             return
 
-        request_body = self.rfile.read(int(self.headers["Content-Length"]))
-        payload = json.loads(request_body)
         created_user = {
             "id": max(user["id"] for user in self.users) + 1,
             "name": payload["name"],
             "job": payload["job"],
         }
-
         self.users.append(created_user)
         self._send_json(201, {"data": created_user})
+
 
     def do_DELETE(self):
         if self.path.startswith("/users/"):
