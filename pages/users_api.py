@@ -17,3 +17,7 @@ class UsersApi:
 
     def delete_user(self, user_id):
         return self.client.delete(f"/users/{user_id}")
+
+    def post_user(self, user_id, **fields):
+        payload = fields
+        return self.client.post(f"/users/{user_id}", json=payload)
